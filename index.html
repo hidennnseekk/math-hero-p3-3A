@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>數學小勇者：大陸大冒險 - 現代小學數學 3上A 挑戰賽</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Noto Sans TC', 'Fredoka One', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 32px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-bounce {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-bounce:hover {
+            transform: scale(1.03) translateY(-2px);
+        }
+        .btn-bounce:active {
+            transform: scale(0.96) translateY(2px);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes flash-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; background-color: #ef4444; }
+        }
+        .animate-hit {
+            animation: flash-red 0.3s ease-in-out 2;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f59e0b;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen justify-between p-2 sm:p-4 md:p-6">
+
+    <!-- Top Header Navigation / Score Bar -->
+    <header class="max-w-4xl w-full mx-auto glass-card rounded-2xl p-3 mb-4 flex justify-between items-center z-20">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="goToLevelSelect()">
+            <div class="bg-gradient-to-tr from-amber-400 to-yellow-300 text-amber-950 p-2.5 rounded-xl font-bold shadow-lg flex items-center justify-center">
+                <i class="fa-solid fa-shield-halved text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-xl font-black tracking-wide text-amber-300 drop-shadow">數學小勇者</h1>
+                <p class="text-xs text-indigo-200">現代小學數學 3上A 冒險</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <!-- Score Badge -->
+            <div class="bg-indigo-950/80 border border-indigo-400/40 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                <i class="fa-solid fa-star text-amber-400 text-lg animate-bounce"></i>
+                <span id="global-score" class="font-extrabold text-lg text-amber-300">0</span>
+            </div>
+
+            <!-- Audio Toggle Button -->
+            <button id="sound-btn" onclick="toggleSound()" class="bg-indigo-800 hover:bg-indigo-700 text-white w-10 h-10 rounded-xl flex items-center justify-center transition border border-indigo-400/40">
+                <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="max-w-4xl w-full mx-auto flex-1 flex flex-col justify-center items-center relative z-10 my-auto">
+        
+        <!-- SCREEN 1: Welcome & Character Intro -->
+        <div id="screen-welcome" class="w-full glass-card rounded-3xl p-6 text-center flex flex-col items-center">
+            <div class="relative mb-4">
+                <div class="w-28 h-28 sm:w-36 sm:h-36 bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-500 rounded-full flex items-center justify-center shadow-2xl animate-float border-4 border-yellow-100">
+                    <i class="fa-solid fa-user-ninja text-6xl sm:text-7xl text-indigo-950"></i>
+                </div>
+                <span class="absolute -bottom-2 -right-2 bg-emerald-500 text-white text-xs px-3 py-1 rounded-full font-bold border-2 border-white shadow">
+                    P3 數學勇者
+                </span>
+            </div>
+
+            <h2 class="text-2xl sm:text-4xl font-extrabold mb-2 text-white drop-shadow-md">
+                《數學小勇者：大陸大冒險》
+            </h2>
+            <p class="text-indigo-200 text-sm sm:text-base max-w-md mb-6 leading-relaxed">
+                完全涵蓋香港《現代小學數學 3上A》全部內容！收錄 60 條精選題目，擊敗數學怪獸拯救數學王國！
+            </p>
+
+            <button onclick="goToLevelSelect()" class="w-full sm:w-72 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-emerald-950 font-black text-xl py-4 px-8 rounded-2xl shadow-xl border-b-4 border-emerald-700 btn-bounce flex items-center justify-center gap-3">
+                <i class="fa-solid fa-play text-2xl"></i>
+                開始冒險旅程！
+            </button>
+        </div>
+
+        <!-- SCREEN 2: Level Select Map -->
+        <div id="screen-levels" class="w-full hidden space-y-4">
+            <div class="text-center mb-2">
+                <h2 class="text-2xl font-black text-amber-300 drop-shadow">請選擇挑戰單元</h2>
+                <p class="text-xs sm:text-sm text-indigo-200">選擇單元進行針對性練習，或挑戰 60 題終極大試煉！</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Level 1 -->
+                <div onclick="startLevel(1)" class="glass-card p-4 sm:p-5 rounded-2xl cursor-pointer hover:bg-white/20 transition flex items-center justify-between border-2 border-blue-400/40 group btn-bounce">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-blue-500/80 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition">
+                            <i class="fa-solid fa-arrow-down-1-9 text-white"></i>
+                        </div>
+                        <div class="text-left">
+                            <span class="text-xs font-bold text-blue-300 uppercase tracking-wider">單元一 (12 題)</span>
+                            <h3 class="text-lg font-black text-white">五位數寶庫</h3>
+                            <p class="text-xs text-indigo-200">位值、順/倒數、單/雙數、比較大小</p>
+                        </div>
+                    </div>
+                    <div id="stars-l1" class="text-amber-400 text-sm flex gap-1">
+                        <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
+                    </div>
+                </div>
+
+                <!-- Level 2 -->
+                <div onclick="startLevel(2)" class="glass-card p-4 sm:p-5 rounded-2xl cursor-pointer hover:bg-white/20 transition flex items-center justify-between border-2 border-emerald-400/40 group btn-bounce">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-500/80 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition">
+                            <i class="fa-solid fa-ruler text-white"></i>
+                        </div>
+                        <div class="text-left">
+                            <span class="text-xs font-bold text-emerald-300 uppercase tracking-wider">單元二 (12 題)</span>
+                            <h3 class="text-lg font-black text-white">公里和毫米</h3>
+                            <p class="text-xs text-indigo-200">1km=1000m、1cm=10mm、高鐵/硬幣</p>
+                        </div>
+                    </div>
+                    <div id="stars-l2" class="text-amber-400 text-sm flex gap-1">
+                        <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
+                    </div>
+                </div>
+
+                <!-- Level 3 -->
+                <div onclick="startLevel(3)" class="glass-card p-4 sm:p-5 rounded-2xl cursor-pointer hover:bg-white/20 transition flex items-center justify-between border-2 border-rose-400/40 group btn-bounce">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-rose-500/80 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition">
+                            <i class="fa-solid fa-calculator text-white"></i>
+                        </div>
+                        <div class="text-left">
+                            <span class="text-xs font-bold text-rose-300 uppercase tracking-wider">單元三 (18 題)</span>
+                            <h3 class="text-lg font-black text-white">乘法王國</h3>
+                            <p class="text-xs text-indigo-200">兩/三位數乘法、估算、連乘、應用題</p>
+                        </div>
+                    </div>
+                    <div id="stars-l3" class="text-amber-400 text-sm flex gap-1">
+                        <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
+                    </div>
+                </div>
+
+                <!-- Level 4 -->
+                <div onclick="startLevel(4)" class="glass-card p-4 sm:p-5 rounded-2xl cursor-pointer hover:bg-white/20 transition flex items-center justify-between border-2 border-amber-400/40 group btn-bounce">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-amber-500/80 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition">
+                            <i class="fa-regular fa-clock text-white"></i>
+                        </div>
+                        <div class="text-left">
+                            <span class="text-xs font-bold text-amber-300 uppercase tracking-wider">單元四 (18 題)</span>
+                            <h3 class="text-lg font-black text-white">時間與秒之塔</h3>
+                            <p class="text-xs text-indigo-200">經過時間、開始/結束時間、秒換算</p>
+                        </div>
+                    </div>
+                    <div id="stars-l4" class="text-amber-400 text-sm flex gap-1">
+                        <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boss Level Card -->
+            <div onclick="startLevel(5)" class="glass-card p-5 sm:p-6 rounded-2xl cursor-pointer bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-purple-900/90 hover:from-purple-800 hover:to-indigo-800 transition border-2 border-purple-400/60 group btn-bounce relative overflow-hidden shadow-2xl">
+                <div class="absolute -right-4 -bottom-6 text-8xl text-purple-500/10 group-hover:scale-125 transition">
+                    <i class="fa-solid fa-dragon"></i>
+                </div>
+                <div class="flex items-center justify-between relative z-10">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-2xl flex items-center justify-center text-3xl shadow-lg group-hover:rotate-12 transition border border-purple-300/40">
+                            <i class="fa-solid fa-dragon text-white"></i>
+                        </div>
+                        <div class="text-left">
+                            <span class="bg-purple-500/30 text-purple-200 text-xs px-3 py-0.5 rounded-full font-bold border border-purple-400/40">終極挑戰</span>
+                            <h3 class="text-xl font-black text-amber-300 mt-1">60 題終極數學大考驗！</h3>
+                            <p class="text-xs text-purple-200">涵蓋 3上A 全書 4 個單元所有知識點</p>
+                        </div>
+                    </div>
+                    <div id="stars-l5" class="text-amber-400 text-base flex gap-1">
+                        <i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: Active Gameplay Arena -->
+        <div id="screen-game" class="w-full hidden glass-card rounded-3xl p-4 sm:p-6 flex flex-col justify-between min-h-[500px]">
+            
+            <!-- Question Top Status Bar -->
+            <div class="flex justify-between items-center bg-indigo-950/70 p-3 rounded-2xl border border-indigo-400/30 mb-3">
+                <div class="flex items-center gap-2">
+                    <span id="level-badge" class="bg-amber-400 text-amber-950 font-black text-xs px-3 py-1 rounded-xl">單元一</span>
+                    <span id="question-tracker" class="text-xs sm:text-sm font-bold text-indigo-200">題目 1 / 12</span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="text-xs font-bold text-amber-300 bg-indigo-900/80 px-2.5 py-1 rounded-lg border border-amber-400/30">
+                        <i class="fa-solid fa-fire text-orange-400"></i> Combo: <span id="combo-count">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RPG Battle Viewport (Boss / Hero Status) -->
+            <div id="battle-viewport" class="bg-indigo-950/60 rounded-2xl p-4 border border-indigo-500/30 mb-4 relative overflow-hidden flex justify-between items-center min-h-[120px]">
+                <!-- Hero Info -->
+                <div id="hero-box" class="flex items-center gap-3 transition">
+                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-500/20 border-2 border-emerald-400 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl text-emerald-300 shadow">
+                        <i id="hero-avatar" class="fa-solid fa-user-ninja"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-emerald-300 font-bold">小勇者 HP</p>
+                        <div class="w-24 sm:w-32 bg-gray-800 h-3.5 rounded-full overflow-hidden mt-1 border border-gray-600">
+                            <div id="hero-hp" class="bg-gradient-to-r from-emerald-500 to-green-400 h-full w-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VS Badge -->
+                <div class="text-xs font-black bg-indigo-800/80 px-2.5 py-1 rounded-full border border-indigo-400/40 text-amber-300 shadow">
+                    VS
+                </div>
+
+                <!-- Monster Info -->
+                <div id="monster-box" class="flex items-center gap-3 text-right transition">
+                    <div>
+                        <p id="monster-name" class="text-xs text-rose-300 font-bold">位值怪獸</p>
+                        <div class="w-24 sm:w-32 bg-gray-800 h-3.5 rounded-full overflow-hidden mt-1 border border-gray-600 ml-auto">
+                            <div id="monster-hp" class="bg-gradient-to-r from-rose-500 to-red-400 h-full w-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-rose-500/20 border-2 border-rose-400 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl text-rose-300 shadow animate-pulse-slow">
+                        <i id="monster-avatar" class="fa-solid fa-ghost"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Prompt Box -->
+            <div class="text-center my-auto py-2 px-2">
+                <div id="question-prompt" class="text-base sm:text-xl font-black text-amber-200 leading-snug drop-shadow-md">
+                    正在載入題目...
+                </div>
+                <div id="question-visual" class="my-2 flex justify-center items-center min-h-[30px]">
+                    <!-- Visual diagram / helper text -->
+                </div>
+            </div>
+
+            <!-- Options Grid (A, B, C, D) -->
+            <div id="answers-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                <!-- Answer Buttons dynamically inserted via JS -->
+            </div>
+
+            <p class="text-center text-[11px] text-indigo-300/60 mt-2">提示：也可以按鍵盤數字鍵 [1], [2], [3], [4] 或 [A], [B], [C], [D] 作答</p>
+
+            <!-- Return Menu Button -->
+            <button onclick="goToLevelSelect()" class="mt-3 text-xs text-indigo-300 hover:text-white flex items-center justify-center gap-1 self-center transition">
+                <i class="fa-solid fa-chevron-left"></i> 放棄並返回關卡地圖
+            </button>
+        </div>
+
+        <!-- SCREEN 4: Level Completion Summary -->
+        <div id="screen-result" class="w-full hidden glass-card rounded-3xl p-6 text-center flex flex-col items-center">
+            <div id="result-icon" class="w-24 h-24 bg-amber-400 text-amber-950 rounded-full flex items-center justify-center text-5xl mb-3 shadow-2xl animate-bounce">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <h2 id="result-title" class="text-2xl sm:text-3xl font-extrabold text-amber-300 mb-1">任務成功！</h2>
+            <p id="result-subtitle" class="text-indigo-200 text-xs sm:text-sm mb-4">你成功討伐了數學怪獸！</p>
+
+            <!-- Stars Awarded -->
+            <div id="result-stars" class="flex gap-2 text-3xl text-amber-400 mb-5">
+                <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+            </div>
+
+            <!-- Summary Table -->
+            <div class="w-full max-w-xs bg-indigo-950/70 rounded-2xl p-4 border border-indigo-400/30 space-y-2 text-sm mb-6">
+                <div class="flex justify-between">
+                    <span class="text-indigo-300">本關得分：</span>
+                    <span id="res-score" class="font-black text-amber-300">+0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-indigo-300">答對題數：</span>
+                    <span id="res-accuracy" class="font-black text-white">0 / 0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-indigo-300">最高連擊：</span>
+                    <span id="res-combo" class="font-black text-emerald-300">0 Combo</span>
+                </div>
+            </div>
+
+            <div class="flex gap-3 w-full max-w-xs">
+                <button onclick="goToLevelSelect()" class="flex-1 bg-indigo-700 hover:bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow btn-bounce text-sm border border-indigo-400/30">
+                    關卡地圖
+                </button>
+                <button onclick="retryLevel()" class="flex-1 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-amber-950 font-black py-3 px-4 rounded-xl shadow btn-bounce text-sm">
+                    再試一次
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-4xl w-full mx-auto text-center text-xs text-indigo-300/60 py-2 mt-4">
+        香港小學現代數學 3上A 專屬學習遊戲 &bull; 60 題完整練習版
+    </footer>
+
+    <!-- Audio Synthesizer & Game Logic -->
+    <script>
+        // --- Web Audio API Synthesizer ---
+        let audioCtx = null;
+        let isSoundMuted = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (isSoundMuted) return;
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'correct') {
+                // Success Double Chime
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); // G5
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else if (type === 'wrong') {
+                // Wrong Buzz Sound
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'click') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(450, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'fanfare') {
+                [261.63, 329.63, 392.00, 523.25].forEach((freq, idx) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.type = 'triangle';
+                    o.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    g.gain.setValueAtTime(0.2, now + idx * 0.1);
+                    g.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+                    o.start(now + idx * 0.1);
+                    o.stop(now + idx * 0.1 + 0.3);
+                });
+            }
+        }
+
+        function toggleSound() {
+            isSoundMuted = !isSoundMuted;
+            const icon = document.getElementById('sound-icon');
+            if (isSoundMuted) {
+                icon.className = "fa-solid fa-volume-xmark text-rose-400";
+            } else {
+                icon.className = "fa-solid fa-volume-high";
+                playSound('click');
+            }
+        }
+
+        // --- 60 TRADITIONAL CHINESE QUESTIONS DATASET (HK P3 MATH 3A) ---
+        const ALL_QUESTIONS = {
+            // 單元一：五位數 (12 題)
+            unit1: [
+                { prompt: "在數字 <span class='text-amber-300 font-black underline'>48,251</span> 中，數字 '8' 在哪一個數位？", options: ["萬位", "千位", "百位", "十位"], ans: 1 },
+                { prompt: "在數字 <span class='text-amber-300 font-black underline'>63,095</span> 中，'6' 代表的值是多少？", options: ["600", "6,000", "60,000", "60"], ans: 2 },
+                { prompt: "由數字 5, 0, 8, 2, 9 組成的<span class='text-amber-300 font-black'>最大五位數</span>是什麼？", options: ["98,520", "98,502", "89,520", "95,820"], ans: 0 },
+                { prompt: "由數字 3, 1, 0, 7, 4 組成的<span class='text-amber-300 font-black'>最小五位數</span>是什麼？", options: ["01,347", "10,347", "10,437", "13,047"], ans: 1 },
+                { prompt: "比較大小： 45,820  ______  45,802", options: ["> (大於)", "< (小於)", "= (等於)", "無法比較"], ans: 0 },
+                { prompt: "比較大小： 90,010  ______  90,100", options: ["< (小於)", "> (大於)", "= (等於)", "無法比較"], ans: 0 },
+                { prompt: "5 個萬、3 個百和 2 個一合起來是多少？", options: ["53,002", "50,302", "50,320", "53,200"], ans: 1 },
+                { prompt: "從 20,000 開始<span class='text-amber-300 font-black'>倒數</span>，下一個數是多少？", options: ["20,001", "19,999", "19,900", "19,000"], ans: 1 },
+                { prompt: "下列哪一個數是<span class='text-amber-300 font-black'>雙數（偶數）</span>？", options: ["31,457", "52,809", "64,312", "89,103"], ans: 2 },
+                { prompt: "下列哪一個數是<span class='text-amber-300 font-black'>單數（奇數）</span>？", options: ["12,340", "45,678", "78,910", "90,123"], ans: 3 },
+                { prompt: "在 76,543 中，百位數字是 5，十位數字是多少？", options: ["7", "6", "4", "3"], ans: 2 },
+                { prompt: "順數填空： 38,980, 38,990, ______ , 39,010", options: ["39,000", "38,991", "39,100", "40,000"], ans: 0 }
+            ],
+
+            // 單元二：公里和毫米 (12 題)
+            unit2: [
+                { prompt: "1 公里 (km) 相等於多少米 (m)？", options: ["10 米", "100 米", "1000 米", "10000 米"], ans: 2 },
+                { prompt: "1 厘米 (cm) 相等於多少毫米 (mm)？", options: ["10 毫米", "100 毫米", "1000 毫米", "1 毫米"], ans: 0 },
+                { prompt: "看圖換算：<span class='text-amber-300 font-black'>3 公里 900 米 = ? 米</span>", options: ["3090 米", "3900 米", "390 米", "39000 米"], ans: 1, visual: "<div class='text-xs text-indigo-200 bg-indigo-900/60 p-2 rounded-lg'>課本例題：3 公里 = 3000 米，3000 米 + 900 米</div>" },
+                { prompt: "看圖換算：<span class='text-amber-300 font-black'>12 km 56 m = ? m</span>", options: ["12056 m", "12560 m", "1256 m", "120056 m"], ans: 0 },
+                { prompt: "單位換算： <span class='text-amber-300 font-black'>4 公里 7 米 = ? 米</span>", options: ["4700 米", "4070 米", "4007 米", "470 米"], ans: 2 },
+                { prompt: "單位換算： <span class='text-amber-300 font-black'>15 km 8 m = ? m</span>", options: ["15080 m", "15008 m", "15800 m", "158 m"], ans: 1 },
+                { prompt: "測量<span class='text-amber-300 font-black'>八達通卡或硬幣的厚度</span>，最適合用什麼單位？", options: ["米 (m)", "厘米 (cm)", "毫米 (mm)", "公里 (km)"], ans: 2, visual: "<div class='text-3xl text-amber-300'><i class='fa-regular fa-credit-card'></i></div>" },
+                { prompt: "測量<span class='text-amber-300 font-black'>香港高速鐵路路線長度</span>，最適合用什麼單位？", options: ["毫米 (mm)", "厘米 (cm)", "米 (m)", "公里 (km)"], ans: 3, visual: "<div class='text-3xl text-emerald-400'><i class='fa-solid fa-train-subway'></i></div>" },
+                { prompt: "京廣高速鐵路長約 2300 公里，鄭西高速鐵路長約 520 公里，兩者相差多少公里？", options: ["1780 公里", "2820 公里", "1820 公里", "1720 公里"], ans: 0 },
+                { prompt: "餐廳與酒店之間的路程是 2 km 800 m，即是多少米？", options: ["2080 米", "2800 米", "280 米", "28000 米"], ans: 1 },
+                { prompt: "一支鉛筆的長度比 1 厘米長，厚度約 7 ____，括號內應填入什麼？", options: ["米", "厘米", "毫米", "公里"], ans: 2 },
+                { prompt: "由沙灘前往酒店，路程是 13 公里，即是多少 m？", options: ["1300 m", "13000 m", "130 m", "130000 m"], ans: 1 }
+            ],
+
+            // 單元三：乘法 (18 題)
+            unit3: [
+                { prompt: "計算： <span class='text-amber-300 font-black'>42 × 3 = ?</span>", options: ["126", "123", "128", "136"], ans: 0 },
+                { prompt: "計算： <span class='text-amber-300 font-black'>85 × 4 = ?</span>", options: ["320", "340", "360", "330"], ans: 1 },
+                { prompt: "計算： <span class='text-amber-300 font-black'>123 × 3 = ?</span>", options: ["369", "366", "396", "363"], ans: 0 },
+                { prompt: "計算： <span class='text-amber-300 font-black'>405 × 6 = ?</span>", options: ["2430", "2400", "2405", "2030"], ans: 0 },
+                { prompt: "估算計算： <span class='text-amber-300 font-black'>59 × 4</span> 的結果約是多少？", options: ["200", "240", "300", "180"], ans: 1, visual: "<div class='text-xs text-indigo-200 bg-indigo-900/60 p-1.5 rounded'>提示：把 59 看作 60 進行估算</div>" },
+                { prompt: "估算計算： <span class='text-amber-300 font-black'>302 × 7</span> 的結果約是多少？", options: ["2100", "1400", "2400", "2800"], ans: 0 },
+                { prompt: "連乘計算： <span class='text-amber-300 font-black'>2 × 15 × 4 = ?</span>", options: ["120", "100", "140", "150"], ans: 0 },
+                { prompt: "連乘計算： <span class='text-amber-300 font-black'>5 × 12 × 2 = ?</span>", options: ["120", "100", "140", "60"], ans: 0 },
+                { prompt: "每盒蛋撻有 6 個，買 14 盒共有蛋撻多少個？", options: ["84 個", "74 個", "94 個", "80 個"], ans: 0 },
+                { prompt: "故事書每本售 45 元，小明買了 3 本，付 200 元應找回多少元？", options: ["65 元", "135 元", "55 元", "75 元"], ans: 0 },
+                { prompt: "計算： <span class='text-amber-300 font-black'>250 × 4 = ?</span>", options: ["1000", "800", "1200", "900"], ans: 0 },
+                { prompt: "計算： <span class='text-amber-300 font-black'>712 × 8 = ?</span>", options: ["5696", "5686", "5706", "5616"], ans: 0 },
+                { prompt: "一箱水果重 15 公斤，7 箱共重多少公斤？", options: ["105 公斤", "95 公斤", "115 公斤", "100 公斤"], ans: 0 },
+                { prompt: "電影院有 8 排座位，每排有 25 個座位，共有座位多少個？", options: ["200 個", "180 個", "220 個", "160 個"], ans: 0 },
+                { prompt: "計算： <span class='text-amber-300 font-black'>6 × 0 × 85 = ?</span>", options: ["0", "510", "85", "685"], ans: 0 },
+                { prompt: "小華每天做 25 題數學題，一個星期（7天）共做多少題？", options: ["175 題", "165 題", "185 題", "150 題"], ans: 0 },
+                { prompt: "計算： <span class='text-amber-300 font-black'>108 × 9 = ?</span>", options: ["972", "908", "982", "962"], ans: 0 },
+                { prompt: "超級市場有軟糖 4 桶，每桶有 125 粒，共有軟糖多少粒？", options: ["500 粒", "450 粒", "600 粒", "400 粒"], ans: 0 }
+            ],
+
+            // 單元四：時間與秒 (18 題)
+            unit4: [
+                { prompt: "1 分鐘相等於多少秒？", options: ["60 秒", "100 秒", "10 秒", "120 秒"], ans: 0 },
+                { prompt: "單位換算： <span class='text-amber-300 font-black'>2 分 15 秒 = ? 秒</span>", options: ["135 秒", "215 秒", "125 秒", "75 秒"], ans: 0 },
+                { prompt: "單位換算： <span class='text-amber-300 font-black'>90 秒 = ? 分 ? 秒</span>", options: ["1 分 30 秒", "1 分 10 秒", "2 分 30 秒", "1 分 40 秒"], ans: 0 },
+                { prompt: "小強跑 100 米用了 18 秒，小明用了 15 秒，誰跑得較快？", options: ["小明", "小強", "一樣快", "無法比較"], ans: 0 },
+                { prompt: "電影在 上午 10:15 開始，進行了 1 小時 30 分鐘，結束時間是什麼？", options: ["上午 11:45", "上午 11:30", "下午 12:15", "下午 1:15"], ans: 0 },
+                { prompt: "巴士在 下午 2:10 開出，於 下午 2:55 到達終點，經過了多久？", options: ["45 分鐘", "35 分鐘", "50 分鐘", "40 分鐘"], ans: 0 },
+                { prompt: "做一次深呼吸大約需要 5 ____，括號內應填入什麼單位？", options: ["秒", "分鐘", "小時", "天"], ans: 0 },
+                { prompt: "單位換算： <span class='text-amber-300 font-black'>3 分鐘 = ? 秒</span>", options: ["180 秒", "300 秒", "120 秒", "30 秒"], ans: 0 },
+                { prompt: "數學測驗在 上午 9:00 開始，測驗時間是 40 分鐘，結束時間是什麼？", options: ["上午 9:40", "上午 9:30", "上午 10:00", "上午 9:50"], ans: 0 },
+                { prompt: "小紅由 下午 4:30 開始做功課，下午 5:15 完成，她做了多久功課？", options: ["45 分鐘", "30 分鐘", "15 分鐘", "60 分鐘"], ans: 0 },
+                { prompt: "單位換算： <span class='text-amber-300 font-black'>180 秒 = ? 分鐘</span>", options: ["3 分鐘", "18 分鐘", "2 分鐘", "6 分鐘"], ans: 0 },
+                { prompt: "眨眼一次大約需要 1 ____，括號內應填入什麼單位？", options: ["秒", "分鐘", "小時", "毫秒"], ans: 0 },
+                { prompt: "火車於 上午 8:40 開出，經過 20 分鐘到達，到達時間是什麼？", options: ["上午 9:00", "上午 8:50", "上午 9:10", "上午 9:20"], ans: 0 },
+                { prompt: "鐘面上的秒針走一圈是多久？", options: ["1 分鐘 (60秒)", "1 小時", "12 秒", "1 秒"], ans: 0 },
+                { prompt: "游泳比賽中，小華用時 1 分 10 秒，小傑用時 65 秒，誰獲勝？", options: ["小傑", "小華", "平手", "無法比較"], ans: 0 },
+                { prompt: "單位換算： <span class='text-amber-300 font-black'>4 分 5 秒 = ? 秒</span>", options: ["245 秒", "405 秒", "205 秒", "45 秒"], ans: 0 },
+                { prompt: "小卡由 上午 11:50 玩遊戲至 下午 12:20，共玩了多久？", options: ["30 分鐘", "40 分鐘", "20 分鐘", "50 分鐘"], ans: 0 },
+                { prompt: "下課小息由 上午 10:15 開始，長 15 分鐘，結束時間是什麼？", options: ["上午 10:30", "上午 10:25", "上午 10:45", "上午 10:35"], ans: 0 }
+            ]
+        };
+
+        // Monster Metadata
+        const MONSTERS_INFO = {
+            1: { name: "五位數巨魔", avatar: "fa-solid fa-cubes-stacked", bg: "from-blue-500 to-indigo-600" },
+            2: { name: "距離公里龍", avatar: "fa-solid fa-ruler-combined", bg: "from-emerald-500 to-teal-600" },
+            3: { name: "速算乘法獸", avatar: "fa-solid fa-calculator", bg: "from-rose-500 to-orange-600" },
+            4: { name: "時間秒之精靈", avatar: "fa-regular fa-clock", bg: "from-amber-500 to-yellow-600" },
+            5: { name: "終極 60 題大魔王", avatar: "fa-solid fa-dragon", bg: "from-purple-600 to-pink-600" }
+        };
+
+        // --- GAME ENGINE STATE ---
+        let currentLevel = 1;
+        let currentQuestionIdx = 0;
+        let activeQuestions = [];
+        let globalScore = 0;
+        let levelScore = 0;
+        let correctCount = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let levelStars = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+        // Navigation
+        function hideAllScreens() {
+            document.getElementById('screen-welcome').classList.add('hidden');
+            document.getElementById('screen-levels').classList.add('hidden');
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-result').classList.add('hidden');
+        }
+
+        function goToLevelSelect() {
+            playSound('click');
+            hideAllScreens();
+            document.getElementById('screen-levels').classList.remove('hidden');
+            updateStarsUI();
+        }
+
+        function updateStarsUI() {
+            for (let i = 1; i <= 5; i++) {
+                const container = document.getElementById(`stars-l${i}`);
+                if (!container) continue;
+                let html = '';
+                for (let s = 1; s <= 3; s++) {
+                    if (s <= levelStars[i]) {
+                        html += '<i class="fa-solid fa-star text-amber-400"></i>';
+                    } else {
+                        html += '<i class="fa-regular fa-star text-gray-400"></i>';
+                    }
+                }
+                container.innerHTML = html;
+            }
+            document.getElementById('global-score').innerText = globalScore;
+        }
+
+        function shuffleArray(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function startLevel(lvl) {
+            playSound('click');
+            currentLevel = lvl;
+            currentQuestionIdx = 0;
+            levelScore = 0;
+            correctCount = 0;
+            combo = 0;
+            maxCombo = 0;
+
+            // Prepare Questions
+            if (lvl === 1) activeQuestions = shuffleArray(ALL_QUESTIONS.unit1);
+            else if (lvl === 2) activeQuestions = shuffleArray(ALL_QUESTIONS.unit2);
+            else if (lvl === 3) activeQuestions = shuffleArray(ALL_QUESTIONS.unit3);
+            else if (lvl === 4) activeQuestions = shuffleArray(ALL_QUESTIONS.unit4);
+            else if (lvl === 5) {
+                // Combine all 60 questions for Level 5
+                const all60 = [
+                    ...ALL_QUESTIONS.unit1,
+                    ...ALL_QUESTIONS.unit2,
+                    ...ALL_QUESTIONS.unit3,
+                    ...ALL_QUESTIONS.unit4
+                ];
+                activeQuestions = shuffleArray(all60);
+            }
+
+            // Update UI Header & Monster Status
+            const mon = MONSTERS_INFO[lvl];
+            document.getElementById('monster-name').innerText = mon.name;
+            document.getElementById('monster-avatar').className = mon.avatar;
+            document.getElementById('level-badge').innerText = lvl === 5 ? "60 題終極大考驗" : `單元 ${lvl}`;
+
+            hideAllScreens();
+            document.getElementById('screen-game').classList.remove('hidden');
+
+            renderQuestion();
+        }
+
+        function retryLevel() {
+            startLevel(currentLevel);
+        }
+
+        function renderQuestion() {
+            const qRaw = activeQuestions[currentQuestionIdx];
+            
+            // Randomize Options while tracking correct answer
+            const originalCorrectText = qRaw.options[qRaw.ans];
+            const shuffledOptions = shuffleArray(qRaw.options);
+            const newAnsIdx = shuffledOptions.indexOf(originalCorrectText);
+
+            // Save randomized state for this turn
+            window.currentTurnData = {
+                prompt: qRaw.prompt,
+                options: shuffledOptions,
+                ans: newAnsIdx,
+                visual: qRaw.visual || ""
+            };
+
+            document.getElementById('question-tracker').innerText = `題目 ${currentQuestionIdx + 1} / ${activeQuestions.length}`;
+            document.getElementById('combo-count').innerText = combo;
+            document.getElementById('question-prompt').innerHTML = window.currentTurnData.prompt;
+            document.getElementById('question-visual').innerHTML = window.currentTurnData.visual;
+
+            // Health Bar calculations
+            const heroHp = document.getElementById('hero-hp');
+            const monsterHp = document.getElementById('monster-hp');
+            monsterHp.style.width = `${Math.max(0, 100 - (currentQuestionIdx / activeQuestions.length) * 100)}%`;
+            heroHp.style.width = `100%`;
+
+            // Render Option Buttons
+            const container = document.getElementById('answers-container');
+            container.innerHTML = '';
+
+            const prefixes = ["A", "B", "C", "D"];
+            window.currentTurnData.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "glass-card hover:bg-amber-400 hover:text-amber-950 text-white font-black text-base sm:text-lg py-3 px-4 rounded-2xl border-2 border-indigo-400/40 btn-bounce flex items-center justify-between transition shadow-md text-left";
+                btn.innerHTML = `<span class="flex items-center gap-2"><span class="bg-indigo-900/80 px-2.5 py-0.5 rounded-lg text-xs text-amber-300 font-bold border border-amber-400/30">${prefixes[idx]}</span> ${opt}</span> <i class="fa-solid fa-circle-chevron-right opacity-40"></i>`;
+                btn.onclick = () => checkAnswer(idx);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIdx) {
+            const turn = window.currentTurnData;
+            const isCorrect = (selectedIdx === turn.ans);
+
+            if (isCorrect) {
+                playSound('correct');
+                correctCount++;
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                const pts = 100 + (combo * 20);
+                levelScore += pts;
+
+                triggerAttackEffect(true);
+            } else {
+                playSound('wrong');
+                combo = 0;
+                triggerAttackEffect(false);
+            }
+
+            currentQuestionIdx++;
+            setTimeout(() => {
+                if (currentQuestionIdx < activeQuestions.length) {
+                    renderQuestion();
+                } else {
+                    finishLevel();
+                }
+            }, 600);
+        }
+
+        function triggerAttackEffect(isHeroAttacking) {
+            const monsterBox = document.getElementById('monster-box');
+            const heroBox = document.getElementById('hero-box');
+
+            if (isHeroAttacking) {
+                monsterBox.classList.add('animate-shake', 'animate-hit');
+                setTimeout(() => {
+                    monsterBox.classList.remove('animate-shake', 'animate-hit');
+                }, 400);
+            } else {
+                heroBox.classList.add('animate-shake', 'animate-hit');
+                setTimeout(() => {
+                    heroBox.classList.remove('animate-shake', 'animate-hit');
+                }, 400);
+            }
+        }
+
+        function finishLevel() {
+            playSound('fanfare');
+            
+            const total = activeQuestions.length;
+            const accuracy = correctCount / total;
+
+            // Calculate Stars
+            let stars = 1;
+            if (accuracy >= 0.85) stars = 3;
+            else if (accuracy >= 0.6) stars = 2;
+
+            if (stars > levelStars[currentLevel]) {
+                levelStars[currentLevel] = stars;
+            }
+
+            globalScore += levelScore;
+            updateStarsUI();
+
+            // Setup Result Screen UI
+            document.getElementById('res-score').innerText = `+${levelScore} 分`;
+            document.getElementById('res-accuracy').innerText = `${correctCount} / ${total} 題 (${Math.round(accuracy * 100)}%)`;
+            document.getElementById('res-combo').innerText = `${maxCombo} Combo`;
+
+            // Dynamic Result Title & Subtitle
+            const resTitle = document.getElementById('result-title');
+            const resSub = document.getElementById('result-subtitle');
+            if (accuracy >= 0.8) {
+                resTitle.innerText = "太棒了！數學大師！";
+                resSub.innerText = "你完全掌握了這個單元的數學知識！";
+            } else if (accuracy >= 0.5) {
+                resTitle.innerText = "挑戰成功！";
+                resSub.innerText = "表現不錯，繼續加油再接再厲！";
+            } else {
+                resTitle.innerText = "加油！勇者！";
+                resSub.innerText = "再多練習幾次，你一定能戰勝怪獸！";
+            }
+
+            // Result Stars Display
+            const resultStarsContainer = document.getElementById('result-stars');
+            let starsHtml = '';
+            for (let i = 1; i <= 3; i++) {
+                if (i <= stars) {
+                    starsHtml += '<i class="fa-solid fa-star text-amber-400 animate-bounce"></i>';
+                } else {
+                    starsHtml += '<i class="fa-regular fa-star text-gray-500"></i>';
+                }
+            }
+            resultStarsContainer.innerHTML = starsHtml;
+
+            // Confetti effect
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            hideAllScreens();
+            document.getElementById('screen-result').classList.remove('hidden');
+        }
+
+        // --- Keyboard Shortcut Controls (1,2,3,4 or A,B,C,D) ---
+        window.addEventListener('keydown', (e) => {
+            const gameScreen = document.getElementById('screen-game');
+            if (gameScreen.classList.contains('hidden')) return;
+
+            const key = e.key.toUpperCase();
+            if (key === '1' || key === 'A') checkAnswer(0);
+            else if (key === '2' || key === 'B') checkAnswer(1);
+            else if (key === '3' || key === 'C') checkAnswer(2);
+            else if (key === '4' || key === 'D') checkAnswer(3);
+        });
+
+        // Initialize Audio Context on user click
+        window.addEventListener('click', initAudio, { once: true });
+        window.addEventListener('touchstart', initAudio, { once: true });
+    </script>
+</body>
+</html>
