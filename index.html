@@ -56,8 +56,8 @@
 
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-10px); }
-            40%, 80% { transform: translateX(10px); }
+            20%, 60% { transform: translateX(-12px); }
+            40%, 80% { transform: translateX(12px); }
         }
         .animate-shake {
             animation: shake 0.4s ease-in-out;
@@ -68,7 +68,24 @@
             50% { opacity: 0.3; background-color: #ef4444; }
         }
         .animate-hit {
-            animation: flash-red 0.3s ease-in-out 2;
+            animation: flash-red 0.35s ease-in-out 2;
+        }
+
+        @keyframes pulse-gold {
+            0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.9); }
+        }
+        .gold-glow {
+            animation: pulse-gold 2s infinite;
+        }
+
+        /* Floating Score Text Animation */
+        @keyframes float-up-text {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+        }
+        .animate-float-text {
+            animation: float-up-text 0.8s ease-out forwards;
         }
 
         ::-webkit-scrollbar {
@@ -83,7 +100,15 @@
         }
     </style>
 </head>
-<body class="flex flex-col min-h-screen justify-between p-2 sm:p-4 md:p-6">
+<body class="flex flex-col min-h-screen justify-between p-2 sm:p-4 md:p-6 relative">
+
+    <!-- Floating Item Notification Overlay -->
+    <div id="item-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none hidden transition-all duration-300">
+        <div class="bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-950 px-6 py-2.5 rounded-full font-black text-lg shadow-2xl border-2 border-white flex items-center gap-2 animate-bounce">
+            <i id="toast-icon" class="fa-solid fa-gift text-2xl"></i>
+            <span id="toast-msg">雙倍得分觸發！</span>
+        </div>
+    </div>
 
     <!-- Top Header Navigation / Score Bar -->
     <header class="max-w-4xl w-full mx-auto glass-card rounded-2xl p-3 mb-4 flex justify-between items-center z-20">
@@ -117,7 +142,7 @@
         <!-- SCREEN 1: Welcome & Character Intro -->
         <div id="screen-welcome" class="w-full glass-card rounded-3xl p-6 text-center flex flex-col items-center">
             <div class="relative mb-4">
-                <div class="w-28 h-28 sm:w-36 sm:h-36 bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-500 rounded-full flex items-center justify-center shadow-2xl animate-float border-4 border-yellow-100">
+                <div class="w-28 h-28 sm:w-36 sm:h-36 bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-500 rounded-full flex items-center justify-center shadow-2xl animate-float border-4 border-yellow-100 gold-glow">
                     <i class="fa-solid fa-user-ninja text-6xl sm:text-7xl text-indigo-950"></i>
                 </div>
                 <span class="absolute -bottom-2 -right-2 bg-emerald-500 text-white text-xs px-3 py-1 rounded-full font-bold border-2 border-white shadow">
@@ -138,8 +163,24 @@
             </button>
         </div>
 
-        <!-- SCREEN 2: Level Select Map -->
+        <!-- SCREEN 2: Level Select & Game Mode Map -->
         <div id="screen-levels" class="w-full hidden space-y-4">
+            
+            <!-- Game Mode Selector -->
+            <div class="glass-card p-3 rounded-2xl flex flex-wrap justify-between items-center gap-3 border border-indigo-400/40">
+                <span class="text-xs font-bold text-amber-300 flex items-center gap-1.5 ml-2">
+                    <i class="fa-solid fa-gamepad text-base"></i> 選擇挑戰模式：
+                </span>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button id="mode-classic-btn" onclick="selectGameMode('classic')" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black transition border bg-amber-400 text-amber-950 border-amber-300 shadow">
+                        <i class="fa-solid fa-shield"></i> 標準 RPG 冒險
+                    </button>
+                    <button id="mode-speed-btn" onclick="selectGameMode('speed')" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black transition border bg-indigo-900/80 text-indigo-300 border-indigo-700 hover:bg-indigo-800">
+                        <i class="fa-solid fa-bolt text-yellow-400"></i> 疾風狂飆 (15秒限時)
+                    </button>
+                </div>
+            </div>
+
             <div class="text-center mb-2">
                 <h2 class="text-2xl font-black text-amber-300 drop-shadow">請選擇挑戰單元</h2>
                 <p class="text-xs sm:text-sm text-indigo-200">選擇單元進行針對性練習，或挑戰 60 題終極大試煉！</p>
@@ -239,7 +280,7 @@
         </div>
 
         <!-- SCREEN 3: Active Gameplay Arena -->
-        <div id="screen-game" class="w-full hidden glass-card rounded-3xl p-4 sm:p-6 flex flex-col justify-between min-h-[500px]">
+        <div id="screen-game" class="w-full hidden glass-card rounded-3xl p-4 sm:p-6 flex flex-col justify-between min-h-[520px] relative overflow-hidden">
             
             <!-- Question Top Status Bar -->
             <div class="flex justify-between items-center bg-indigo-950/70 p-3 rounded-2xl border border-indigo-400/30 mb-3">
@@ -248,26 +289,40 @@
                     <span id="question-tracker" class="text-xs sm:text-sm font-bold text-indigo-200">題目 1 / 12</span>
                 </div>
 
+                <!-- Timer Display (Active in Speed Mode) -->
+                <div id="timer-box" class="hidden items-center gap-1.5 bg-rose-950/80 px-3 py-1 rounded-xl border border-rose-500/50">
+                    <i class="fa-solid fa-stopwatch text-rose-400 animate-pulse"></i>
+                    <span id="timer-sec" class="font-black text-rose-300 text-sm">15s</span>
+                </div>
+
                 <div class="flex items-center gap-2">
                     <!-- Toggle Scratchpad Button -->
                     <button onclick="toggleScratchpad()" class="bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 text-xs font-black px-3 py-1.5 rounded-xl border border-yellow-200 shadow btn-bounce flex items-center gap-1.5">
                         <i class="fa-solid fa-pen-to-square"></i> 手寫草稿紙
                     </button>
-                    <div class="text-xs font-bold text-amber-300 bg-indigo-900/80 px-2.5 py-1.5 rounded-xl border border-amber-400/30">
+                    <div class="text-xs font-bold text-amber-300 bg-indigo-900/80 px-2.5 py-1.5 rounded-xl border border-amber-400/30 flex items-center gap-1">
                         <i class="fa-solid fa-fire text-orange-400"></i> Combo: <span id="combo-count">0</span>
                     </div>
                 </div>
             </div>
 
             <!-- RPG Battle Viewport (Boss / Hero Status) -->
-            <div id="battle-viewport" class="bg-indigo-950/60 rounded-2xl p-4 border border-indigo-500/30 mb-4 relative overflow-hidden flex justify-between items-center min-h-[120px]">
+            <div id="battle-viewport" class="bg-indigo-950/60 rounded-2xl p-4 border border-indigo-500/30 mb-4 relative overflow-hidden flex justify-between items-center min-h-[125px]">
+                
+                <!-- Floating Score Gain FX Container -->
+                <div id="fx-container" class="absolute inset-0 pointer-events-none z-30"></div>
+
                 <!-- Hero Info -->
                 <div id="hero-box" class="flex items-center gap-3 transition">
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-500/20 border-2 border-emerald-400 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl text-emerald-300 shadow">
+                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-500/20 border-2 border-emerald-400 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl text-emerald-300 shadow relative">
                         <i id="hero-avatar" class="fa-solid fa-user-ninja"></i>
+                        <span id="double-badge" class="hidden absolute -top-2 -right-2 bg-amber-400 text-amber-950 text-[10px] font-black px-1.5 py-0.5 rounded-md border border-white">2x XP</span>
                     </div>
                     <div>
-                        <p class="text-xs text-emerald-300 font-bold">小勇者 HP</p>
+                        <p class="text-xs text-emerald-300 font-bold flex justify-between">
+                            <span>勇者 HP</span>
+                            <span id="hero-hp-num" class="text-[10px] text-emerald-200">100/100</span>
+                        </p>
                         <div class="w-24 sm:w-32 bg-gray-800 h-3.5 rounded-full overflow-hidden mt-1 border border-gray-600">
                             <div id="hero-hp" class="bg-gradient-to-r from-emerald-500 to-green-400 h-full w-full transition-all duration-300"></div>
                         </div>
@@ -287,7 +342,7 @@
                             <div id="monster-hp" class="bg-gradient-to-r from-rose-500 to-red-400 h-full w-full transition-all duration-300"></div>
                         </div>
                     </div>
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-rose-500/20 border-2 border-rose-400 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl text-rose-300 shadow animate-pulse-slow">
+                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-rose-500/20 border-2 border-rose-400 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl text-rose-300 shadow">
                         <i id="monster-avatar" class="fa-solid fa-ghost"></i>
                     </div>
                 </div>
@@ -447,7 +502,7 @@
 
     <!-- Audio Synthesizer & Game Logic -->
     <script>
-        // --- Web Audio API Synthesizer ---
+        // --- Web Audio API Advanced Synthesizer ---
         let audioCtx = null;
         let isSoundMuted = false;
 
@@ -467,28 +522,29 @@
             const now = audioCtx.currentTime;
 
             if (type === 'correct') {
-                // Success Double Chime
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(523.25, now); // C5
-                osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); // G5
-                gain.gain.setValueAtTime(0.25, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-                osc.start(now);
-                osc.stop(now + 0.35);
+                // Success Arpeggio Chime
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+                    gain.gain.setValueAtTime(0.2, now + idx * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.25);
+                    osc.start(now + idx * 0.06);
+                    osc.stop(now + idx * 0.06 + 0.25);
+                });
             } else if (type === 'wrong') {
-                // Wrong Buzz Sound
+                // Low Damage Hit Buzz
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(180, now);
-                osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
-                gain.gain.setValueAtTime(0.25, now);
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.exponentialRampToValueAtTime(70, now + 0.3);
+                gain.gain.setValueAtTime(0.3, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
                 osc.start(now);
                 osc.stop(now + 0.3);
@@ -497,24 +553,64 @@
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(450, now);
-                gain.gain.setValueAtTime(0.1, now);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.12, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
                 osc.start(now);
                 osc.stop(now + 0.05);
+            } else if (type === 'item') {
+                // Power-up Item Pickup Sound
+                [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+                    gain.gain.setValueAtTime(0.2, now + idx * 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.05 + 0.15);
+                    osc.start(now + idx * 0.05);
+                    osc.stop(now + idx * 0.05 + 0.15);
+                });
+            } else if (type === 'tick') {
+                // Timer Warning Tick
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+                osc.start(now);
+                osc.stop(now + 0.04);
+            } else if (type === 'boss') {
+                // Boss Roar Effect
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(90, now);
+                osc.frequency.linearRampToValueAtTime(140, now + 0.2);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.6);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
             } else if (type === 'fanfare') {
-                [261.63, 329.63, 392.00, 523.25].forEach((freq, idx) => {
+                [261.63, 329.63, 392.00, 523.25, 659.25, 783.99].forEach((freq, idx) => {
                     const o = audioCtx.createOscillator();
                     const g = audioCtx.createGain();
                     o.connect(g);
                     g.connect(audioCtx.destination);
                     o.type = 'triangle';
-                    o.frequency.setValueAtTime(freq, now + idx * 0.1);
-                    g.gain.setValueAtTime(0.2, now + idx * 0.1);
-                    g.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
-                    o.start(now + idx * 0.1);
-                    o.stop(now + idx * 0.1 + 0.3);
+                    o.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    g.gain.setValueAtTime(0.2, now + idx * 0.08);
+                    g.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.35);
+                    o.start(now + idx * 0.08);
+                    o.stop(now + idx * 0.08 + 0.35);
                 });
             }
         }
@@ -611,15 +707,16 @@
 
         // Monster Metadata
         const MONSTERS_INFO = {
-            1: { name: "五位數巨魔", avatar: "fa-solid fa-cubes-stacked", bg: "from-blue-500 to-indigo-600" },
-            2: { name: "距離公里龍", avatar: "fa-solid fa-ruler-combined", bg: "from-emerald-500 to-teal-600" },
-            3: { name: "速算乘法獸", avatar: "fa-solid fa-calculator", bg: "from-rose-500 to-orange-600" },
-            4: { name: "時間秒之精靈", avatar: "fa-regular fa-clock", bg: "from-amber-500 to-yellow-600" },
-            5: { name: "終極 60 題大魔王", avatar: "fa-solid fa-dragon", bg: "from-purple-600 to-pink-600" }
+            1: { name: "五位數巨魔", avatar: "fa-solid fa-cubes-stacked" },
+            2: { name: "距離公里龍", avatar: "fa-solid fa-ruler-combined" },
+            3: { name: "速算乘法獸", avatar: "fa-solid fa-calculator" },
+            4: { name: "時間秒之精靈", avatar: "fa-regular fa-clock" },
+            5: { name: "終極 60 題大魔王", avatar: "fa-solid fa-dragon" }
         };
 
         // --- GAME ENGINE STATE ---
         let currentLevel = 1;
+        let gameMode = 'classic'; // 'classic' or 'speed'
         let currentQuestionIdx = 0;
         let activeQuestions = [];
         let globalScore = 0;
@@ -627,9 +724,13 @@
         let correctCount = 0;
         let combo = 0;
         let maxCombo = 0;
+        let heroHpVal = 100;
+        let doubleXpTurns = 0;
+        let timerInterval = null;
+        let timeLeft = 15;
         let levelStars = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
-        // Navigation
+        // Navigation & UI Mode Setup
         function hideAllScreens() {
             document.getElementById('screen-welcome').classList.add('hidden');
             document.getElementById('screen-levels').classList.add('hidden');
@@ -637,8 +738,24 @@
             document.getElementById('screen-result').classList.add('hidden');
         }
 
+        function selectGameMode(mode) {
+            playSound('click');
+            gameMode = mode;
+            const classicBtn = document.getElementById('mode-classic-btn');
+            const speedBtn = document.getElementById('mode-speed-btn');
+
+            if (mode === 'classic') {
+                classicBtn.className = "flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black transition border bg-amber-400 text-amber-950 border-amber-300 shadow";
+                speedBtn.className = "flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black transition border bg-indigo-900/80 text-indigo-300 border-indigo-700 hover:bg-indigo-800";
+            } else {
+                speedBtn.className = "flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black transition border bg-amber-400 text-amber-950 border-amber-300 shadow";
+                classicBtn.className = "flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black transition border bg-indigo-900/80 text-indigo-300 border-indigo-700 hover:bg-indigo-800";
+            }
+        }
+
         function goToLevelSelect() {
             playSound('click');
+            stopTimer();
             hideAllScreens();
             document.getElementById('screen-levels').classList.remove('hidden');
             updateStarsUI();
@@ -670,22 +787,44 @@
             return arr;
         }
 
+        function triggerToast(icon, msg) {
+            playSound('item');
+            const toast = document.getElementById('item-toast');
+            document.getElementById('toast-icon').className = icon;
+            document.getElementById('toast-msg').innerText = msg;
+
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 1800);
+        }
+
+        function triggerFloatingText(text, isPositive) {
+            const fxContainer = document.getElementById('fx-container');
+            const div = document.createElement('div');
+            div.className = `absolute left-1/2 top-1/2 -translate-x-1/2 font-black text-2xl ${isPositive ? 'text-amber-300 drop-shadow-[0_2px_10px_rgba(245,158,11,0.8)]' : 'text-rose-400 drop-shadow-[0_2px_10px_rgba(244,63,94,0.8)]'} animate-float-text pointer-events-none z-40`;
+            div.innerText = text;
+            fxContainer.appendChild(div);
+            setTimeout(() => div.remove(), 800);
+        }
+
         function startLevel(lvl) {
-            playSound('click');
+            playSound('boss');
             currentLevel = lvl;
             currentQuestionIdx = 0;
             levelScore = 0;
             correctCount = 0;
             combo = 0;
             maxCombo = 0;
+            heroHpVal = 100;
+            doubleXpTurns = 0;
 
-            // Prepare Questions
+            // Questions setup
             if (lvl === 1) activeQuestions = shuffleArray(ALL_QUESTIONS.unit1);
             else if (lvl === 2) activeQuestions = shuffleArray(ALL_QUESTIONS.unit2);
             else if (lvl === 3) activeQuestions = shuffleArray(ALL_QUESTIONS.unit3);
             else if (lvl === 4) activeQuestions = shuffleArray(ALL_QUESTIONS.unit4);
             else if (lvl === 5) {
-                // Combine all 60 questions for Level 5
                 const all60 = [
                     ...ALL_QUESTIONS.unit1,
                     ...ALL_QUESTIONS.unit2,
@@ -695,16 +834,52 @@
                 activeQuestions = shuffleArray(all60);
             }
 
-            // Update UI Header & Monster Status
+            // Monster & Header
             const mon = MONSTERS_INFO[lvl];
             document.getElementById('monster-name').innerText = mon.name;
             document.getElementById('monster-avatar').className = mon.avatar;
-            document.getElementById('level-badge').innerText = lvl === 5 ? "60 題終極大考驗" : `單元 ${lvl}`;
+            document.getElementById('level-badge').innerText = lvl === 5 ? "60 題終極考驗" : `單元 ${lvl}`;
+
+            // Mode UI Timer adjustment
+            const timerBox = document.getElementById('timer-box');
+            if (gameMode === 'speed') {
+                timerBox.classList.remove('hidden');
+                timerBox.classList.add('flex');
+            } else {
+                timerBox.classList.add('hidden');
+                timerBox.classList.remove('flex');
+            }
 
             hideAllScreens();
             document.getElementById('screen-game').classList.remove('hidden');
 
             renderQuestion();
+        }
+
+        function startTimer() {
+            stopTimer();
+            if (gameMode !== 'speed') return;
+
+            timeLeft = 15;
+            document.getElementById('timer-sec').innerText = `${timeLeft}s`;
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer-sec').innerText = `${timeLeft}s`;
+
+                if (timeLeft <= 5 && timeLeft > 0) {
+                    playSound('tick');
+                }
+
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    checkAnswer(-1); // Timeout as Wrong answer
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
         }
 
         function retryLevel() {
@@ -714,12 +889,11 @@
         function renderQuestion() {
             const qRaw = activeQuestions[currentQuestionIdx];
             
-            // Randomize Options while tracking correct answer
+            // Options randomization
             const originalCorrectText = qRaw.options[qRaw.ans];
             const shuffledOptions = shuffleArray(qRaw.options);
             const newAnsIdx = shuffledOptions.indexOf(originalCorrectText);
 
-            // Save randomized state for this turn
             window.currentTurnData = {
                 prompt: qRaw.prompt,
                 options: shuffledOptions,
@@ -732,13 +906,18 @@
             document.getElementById('question-prompt').innerHTML = window.currentTurnData.prompt;
             document.getElementById('question-visual').innerHTML = window.currentTurnData.visual;
 
-            // Health Bar calculations
-            const heroHp = document.getElementById('hero-hp');
-            const monsterHp = document.getElementById('monster-hp');
-            monsterHp.style.width = `${Math.max(0, 100 - (currentQuestionIdx / activeQuestions.length) * 100)}%`;
-            heroHp.style.width = `100%`;
+            // Update Hero & Monster Health UI
+            updateHpBars();
 
-            // Render Option Buttons
+            // Double XP Badge Toggle
+            const dBadge = document.getElementById('double-badge');
+            if (doubleXpTurns > 0) {
+                dBadge.classList.remove('hidden');
+            } else {
+                dBadge.classList.add('hidden');
+            }
+
+            // Render Options Buttons
             const container = document.getElementById('answers-container');
             container.innerHTML = '';
 
@@ -750,9 +929,24 @@
                 btn.onclick = () => checkAnswer(idx);
                 container.appendChild(btn);
             });
+
+            startTimer();
+        }
+
+        function updateHpBars() {
+            const heroHp = document.getElementById('hero-hp');
+            const monsterHp = document.getElementById('monster-hp');
+            const heroHpNum = document.getElementById('hero-hp-num');
+
+            heroHp.style.width = `${heroHpVal}%`;
+            heroHpNum.innerText = `${heroHpVal}/100`;
+
+            const monsterHpPct = Math.max(0, 100 - (currentQuestionIdx / activeQuestions.length) * 100);
+            monsterHp.style.width = `${monsterHpPct}%`;
         }
 
         function checkAnswer(selectedIdx) {
+            stopTimer();
             const turn = window.currentTurnData;
             const isCorrect = (selectedIdx === turn.ans);
 
@@ -761,17 +955,38 @@
                 correctCount++;
                 combo++;
                 if (combo > maxCombo) maxCombo = combo;
-                const pts = 100 + (combo * 20);
+
+                let pts = 100 + (combo * 20);
+                if (doubleXpTurns > 0) {
+                    pts *= 2;
+                    doubleXpTurns--;
+                }
+
                 levelScore += pts;
+                triggerFloatingText(`+${pts} 分!`, true);
+
+                // Combo Rewards Mechanism
+                if (combo === 3) {
+                    doubleXpTurns = 2;
+                    triggerToast("fa-solid fa-bolt text-2xl", "觸發 Combo！未來 2 題雙倍得分！");
+                } else if (combo === 5) {
+                    heroHpVal = Math.min(100, heroHpVal + 25);
+                    triggerToast("fa-solid fa-heart-pulse text-2xl", "神聖治癒！勇者 HP +25");
+                }
 
                 triggerAttackEffect(true);
             } else {
                 playSound('wrong');
                 combo = 0;
+                heroHpVal = Math.max(10, heroHpVal - 15);
+                triggerFloatingText(`-15 HP!`, false);
+
                 triggerAttackEffect(false);
             }
 
+            updateHpBars();
             currentQuestionIdx++;
+
             setTimeout(() => {
                 if (currentQuestionIdx < activeQuestions.length) {
                     renderQuestion();
@@ -799,6 +1014,7 @@
         }
 
         function finishLevel() {
+            stopTimer();
             playSound('fanfare');
             
             const total = activeQuestions.length;
@@ -821,7 +1037,6 @@
             document.getElementById('res-accuracy').innerText = `${correctCount} / ${total} 題 (${Math.round(accuracy * 100)}%)`;
             document.getElementById('res-combo').innerText = `${maxCombo} Combo`;
 
-            // Dynamic Result Title & Subtitle
             const resTitle = document.getElementById('result-title');
             const resSub = document.getElementById('result-subtitle');
             if (accuracy >= 0.8) {
@@ -835,7 +1050,7 @@
                 resSub.innerText = "再多練習幾次，你一定能戰勝怪獸！";
             }
 
-            // Result Stars Display
+            // Stars Display
             const resultStarsContainer = document.getElementById('result-stars');
             let starsHtml = '';
             for (let i = 1; i <= 3; i++) {
@@ -849,11 +1064,7 @@
 
             // Confetti effect
             if (typeof confetti === 'function') {
-                confetti({
-                    particleCount: 100,
-                    spread: 80,
-                    origin: { y: 0.6 }
-                });
+                confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
             }
 
             hideAllScreens();
@@ -880,8 +1091,8 @@
         let padCanvas = null;
         let padCtx = null;
         let isDrawing = false;
-        let currentTool = 'pen'; // 'pen' or 'eraser'
-        let currentColor = '#38bdf8'; // Sky blue default
+        let currentTool = 'pen';
+        let currentColor = '#38bdf8';
         let currentSize = 4;
 
         function initScratchpad() {
@@ -902,7 +1113,6 @@
             padCanvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 const touch = e.touches[0];
-                const rect = padCanvas.getBoundingClientRect();
                 startDrawing({ clientX: touch.clientX, clientY: touch.clientY });
             });
 
@@ -918,7 +1128,6 @@
         function resizeScratchpad() {
             if (!padCanvas || !padCanvas.parentElement) return;
             
-            // Save existing contents before resize
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = padCanvas.width;
             tempCanvas.height = padCanvas.height;
@@ -931,7 +1140,6 @@
             padCanvas.width = rect.width;
             padCanvas.height = rect.height;
 
-            // Restore canvas contents after resize
             if (tempCanvas.width > 0 && tempCanvas.height > 0) {
                 padCtx.drawImage(tempCanvas, 0, 0);
             }
@@ -944,9 +1152,7 @@
             
             if (isHidden) {
                 modal.classList.remove('hidden');
-                setTimeout(() => {
-                    resizeScratchpad();
-                }, 50);
+                setTimeout(() => resizeScratchpad(), 50);
             } else {
                 modal.classList.add('hidden');
             }
@@ -1031,7 +1237,6 @@
             }
         };
 
-        // Initialize Scratchpad on load
         window.addEventListener('load', initScratchpad);
     </script>
 </body>
